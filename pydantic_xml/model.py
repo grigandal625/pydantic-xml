@@ -16,6 +16,7 @@ from .serializers.factories.model import BaseModelSerializer
 from .serializers.serializer import Serializer, XmlEntityInfoP
 from .typedefs import EntityLocation
 from .utils import NsMap
+from pydantic import PrivateAttr
 
 __all__ = (
     'attr',
@@ -395,6 +396,7 @@ class BaseXmlModel(BaseModel, __xml_abstract__=True, metaclass=XmlModelMeta):
 
     __xml_field_validators__: ClassVar[Dict[str, ValidatorFunc]] = {}
     __xml_field_serializers__: ClassVar[Dict[str, SerializerFunc]] = {}
+    _resolved_tag: str = PrivateAttr(default=None)
 
     def __init_subclass__(
             cls,
@@ -420,6 +422,10 @@ class BaseXmlModel(BaseModel, __xml_abstract__=True, metaclass=XmlModelMeta):
         super().__init_subclass__(**kwargs)
 
         cls.__xml_tag__ = tag if tag is not None else getattr(cls, '__xml_tag__', None)
+        
+        if isinstance(cls.__xml_tag__, list) and not cls.__xml_tag__:
+            raise TypeError(f'Class parameter tag must be a string or not empty list in model {cls}')
+        
         cls.__xml_ns__ = ns if ns is not None else getattr(cls, '__xml_ns__', None)
         cls.__xml_nsmap__ = nsmap if nsmap is not None else getattr(cls, '__xml_nsmap__', None)
         cls.__xml_ns_attrs__ = ns_attrs if ns_attrs is not None else getattr(cls, '__xml_ns_attrs__', False)
@@ -501,7 +507,12 @@ class BaseXmlModel(BaseModel, __xml_abstract__=True, metaclass=XmlModelMeta):
 
         assert cls.__xml_serializer__ is not None, f"model {cls.__name__} is partially initialized"
 
-        if root.tag == cls.__xml_serializer__.element_name:
+        if isinstance(cls.__xml_serializer__.element_name, list):
+            tag_accepted = root.tag in cls.__xml_serializer__.element_name
+        else:
+            tag_accepted = root.tag == cls.__xml_serializer__.element_name
+
+        if tag_accepted:
             obj = typing.cast(
                 ModelT, cls.__xml_serializer__.deserialize(
                     XmlElement.from_native(root),
@@ -510,6 +521,7 @@ class BaseXmlModel(BaseModel, __xml_abstract__=True, metaclass=XmlModelMeta):
                     loc=(),
                 ),
             )
+            obj._resolved_tag = root.tag
             return obj
         else:
             raise errors.ParsingError(
@@ -542,7 +554,14 @@ class BaseXmlModel(BaseModel, __xml_abstract__=True, metaclass=XmlModelMeta):
 
         assert self.__xml_serializer__ is not None, f"model {type(self).__name__} is partially initialized"
 
-        root = XmlElement(tag=self.__xml_serializer__.element_name, nsmap=self.__xml_serializer__.nsmap)
+        tag = self.__xml_serializer__.element_name
+        if isinstance(tag, list):
+            tag = self._resolved_tag
+
+        if not tag:
+            raise ValueError(f"Certain tag was not specified for model {self}")
+
+        root = XmlElement(tag=tag, nsmap=self.__xml_serializer__.nsmap)
         self.__xml_serializer__.serialize(
             root, self, pdc.to_jsonable_python(
                 self,

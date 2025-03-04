@@ -397,7 +397,10 @@ class ModelProxySerializer(BaseModelSerializer):
             return None
 
         if self._nillable and value is None:
-            sub_element = element.make_element(self._element_name, nsmap=self._nsmap)
+            tag = self._element_name
+            if isinstance(tag, list):
+                tag = value._resolved_tag
+            sub_element = element.make_element(tag, nsmap=self._nsmap)
             make_element_nill(sub_element)
             element.append_element(sub_element)
             return sub_element
@@ -405,7 +408,11 @@ class ModelProxySerializer(BaseModelSerializer):
         if value is None:
             return None
 
-        sub_element = element.make_element(self._element_name, nsmap=self._nsmap)
+        tag = self._element_name
+        if isinstance(tag, list):
+            tag = value._resolved_tag
+
+        sub_element = element.make_element(tag, nsmap=self._nsmap)
         self._model.__xml_serializer__.serialize(
             sub_element, value, encoded, skip_empty=skip_empty, exclude_none=exclude_none, exclude_unset=exclude_unset,
         )
@@ -431,14 +438,34 @@ class ModelProxySerializer(BaseModelSerializer):
         if element is None:
             return None
 
-        if (sub_element := element.pop_element(self._element_name, self._search_mode)) is not None:
+        state_idx = None
+        if hasattr(element, '_state'):
+            state_idx = element._state.next_element_idx
+
+        search_tag = self.element_name
+
+        if isinstance(self.element_name, list):
+            idx = 0 
+            found_element = element.find_element(self.element_name[idx], self._search_mode, look_behind=False)
+            while not found_element and idx < len(self.element_name) - 1:
+                idx += 1
+                found_element = element.find_element(self.element_name[idx], self._search_mode, look_behind=False)
+            if not found_element:
+                idx = 0
+            search_tag = self.element_name[idx]
+            if hasattr(element, '_state') and state_idx is not None:
+                element._state.next_element_idx = state_idx
+
+        if (sub_element := element.pop_element(search_tag, self._search_mode)) is not None:
             sourcemap[loc] = sub_element.get_sourceline()
             if is_element_nill(sub_element):
                 return None
             else:
-                return self._model.__xml_serializer__.deserialize(
+                result = self._model.__xml_serializer__.deserialize(
                     sub_element, context=context, sourcemap=sourcemap, loc=loc,
                 )
+                result._resolved_tag = search_tag
+                return result
         else:
             return None
 
