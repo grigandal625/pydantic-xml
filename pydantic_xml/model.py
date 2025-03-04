@@ -5,7 +5,7 @@ from typing import Any, Callable, ClassVar, Dict, Generic, Optional, Tuple, Type
 import pydantic as pd
 import pydantic_core as pdc
 import typing_extensions as te
-from pydantic import BaseModel, RootModel
+from pydantic import BaseModel, PrivateAttr, RootModel
 from pydantic._internal._model_construction import ModelMetaclass  # noqa
 from pydantic.root_model import _RootModelMetaclass as RootModelMetaclass  # noqa
 
@@ -16,7 +16,6 @@ from .serializers.factories.model import BaseModelSerializer
 from .serializers.serializer import Serializer, XmlEntityInfoP
 from .typedefs import EntityLocation
 from .utils import NsMap
-from pydantic import PrivateAttr
 
 __all__ = (
     'attr',
@@ -422,10 +421,10 @@ class BaseXmlModel(BaseModel, __xml_abstract__=True, metaclass=XmlModelMeta):
         super().__init_subclass__(**kwargs)
 
         cls.__xml_tag__ = tag if tag is not None else getattr(cls, '__xml_tag__', None)
-        
+
         if isinstance(cls.__xml_tag__, list) and not cls.__xml_tag__:
             raise TypeError(f'Class parameter tag must be a string or not empty list in model {cls}')
-        
+
         cls.__xml_ns__ = ns if ns is not None else getattr(cls, '__xml_ns__', None)
         cls.__xml_nsmap__ = nsmap if nsmap is not None else getattr(cls, '__xml_nsmap__', None)
         cls.__xml_ns_attrs__ = ns_attrs if ns_attrs is not None else getattr(cls, '__xml_ns_attrs__', False)

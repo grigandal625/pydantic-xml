@@ -445,7 +445,7 @@ class ModelProxySerializer(BaseModelSerializer):
         search_tag = self.element_name
 
         if isinstance(self.element_name, list):
-            idx = 0 
+            idx = 0
             found_element = element.find_element(self.element_name[idx], self._search_mode, look_behind=False)
             while not found_element and idx < len(self.element_name) - 1:
                 idx += 1

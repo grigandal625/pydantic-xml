@@ -1,5 +1,6 @@
-from pydantic_xml import BaseXmlModel, element
 from typing import List
+
+from pydantic_xml import BaseXmlModel, element
 
 
 def test_model_multiple_tags():
@@ -32,7 +33,7 @@ def test_model_multiple_tags():
     actual_obj = TestModel.from_xml(xml)
     assert actual_obj.element1 == 'test'
     assert actual_obj.element2 == 'test'
-    
+
     actual_xml_tree = actual_obj.to_xml_tree()
     assert actual_xml_tree.tag == 'other_tag'
 
