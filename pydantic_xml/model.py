@@ -395,7 +395,7 @@ class BaseXmlModel(BaseModel, __xml_abstract__=True, metaclass=XmlModelMeta):
 
     __xml_field_validators__: ClassVar[Dict[str, ValidatorFunc]] = {}
     __xml_field_serializers__: ClassVar[Dict[str, SerializerFunc]] = {}
-    _resolved_tag: str = PrivateAttr(default=None)
+    _resolved_tag: str | None = PrivateAttr(default=None)
 
     def __init_subclass__(
             cls,
@@ -447,6 +447,16 @@ class BaseXmlModel(BaseModel, __xml_abstract__=True, metaclass=XmlModelMeta):
                 if fields := getattr(func, '__xml_field_validator__', None):
                     for field in fields:
                         cls.__xml_field_validators__[field] = func
+
+    def __eq__(self, other: Any | 'BaseXmlModel') -> bool:
+        if isinstance(other, BaseXmlModel):
+            if self._resolved_tag != other._resolved_tag:
+                other_resolved_tag = other._resolved_tag
+                other._resolved_tag = self._resolved_tag
+                result = super().__eq__(other)
+                other._resolved_tag = other_resolved_tag
+                return result
+        return super().__eq__(other)
 
     @classmethod
     def __build_serializer__(cls) -> None:

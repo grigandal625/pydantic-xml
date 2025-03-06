@@ -1,6 +1,6 @@
 import abc
 import typing
-from typing import Any, Dict, List, Mapping, Optional, Set, Type, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Mapping, Optional, Set, Type, Union, cast
 
 import pydantic as pd
 import pydantic_core as pdc
@@ -12,6 +12,9 @@ from pydantic_xml.element import XmlElementReader, XmlElementWriter, is_element_
 from pydantic_xml.serializers.serializer import SearchMode, Serializer, XmlEntityInfoP
 from pydantic_xml.typedefs import EntityLocation, Location, NsMap
 from pydantic_xml.utils import QName, merge_nsmaps, select_ns
+
+if TYPE_CHECKING:
+    from pydantic_xml import BaseXmlModel
 
 
 class BaseModelSerializer(Serializer, abc.ABC):
@@ -464,7 +467,11 @@ class ModelProxySerializer(BaseModelSerializer):
                 result = self._model.__xml_serializer__.deserialize(
                     sub_element, context=context, sourcemap=sourcemap, loc=loc,
                 )
-                result._resolved_tag = search_tag
+                if result is not None:
+                    model = cast('BaseXmlModel', result)
+                    if hasattr(model, '_resolved_tag'):
+                        model._resolved_tag = search_tag
+                    return model
                 return result
         else:
             return None
