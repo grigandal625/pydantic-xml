@@ -448,7 +448,7 @@ class BaseXmlModel(BaseModel, __xml_abstract__=True, metaclass=XmlModelMeta):
                     for field in fields:
                         cls.__xml_field_validators__[field] = func
 
-    def __eq__(self, other: Any | 'BaseXmlModel') -> bool:
+    def __eq__(self, other: Union['BaseXmlModel', Any]) -> bool:
         if isinstance(other, BaseXmlModel):
             if self._resolved_tag != other._resolved_tag:
                 other_resolved_tag = other._resolved_tag
